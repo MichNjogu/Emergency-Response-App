@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "771001308136",
+    "project_id": "mich-emergency-response-app",
+    "storage_bucket": "mich-emergency-response-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:771001308136:android:7d23e022bb97fc39be8a5d",
+        "android_client_info": {
+          "package_name": "com.example.emergency_response_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "771001308136-4j3d7019um5igise8r91dl9lttoncb75.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZRV4wxEEJkBdrKuqwclyhUK6HS5iamTQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "771001308136-4j3d7019um5igise8r91dl9lttoncb75.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "771001308136-qouaak7n49clel5hj9dtcie5qna02ajm.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.emergencyResponseApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
