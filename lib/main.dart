@@ -7,6 +7,34 @@ import 'package:geolocator/geolocator.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
+
+Future<void> testNetwork() async {
+  try {
+    final response = await http.get(
+      Uri.parse('https://jsonplaceholder.typicode.com/posts/1'),
+    );
+
+    debugPrint("Network status: ${response.statusCode}");
+    debugPrint("Network response: ${response.body}");
+  } catch (e) {
+    debugPrint("Network error: $e");
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await testNetwork();
+
+  await initializeNotifications();
+
+  runApp(const EmergencyApp());
+}
 
 final FlutterLocalNotificationsPlugin notificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -41,13 +69,6 @@ Future<void> showSafetyNotification() async {
     body: 'Stay alert. Emergency safety notifications are active.',
     notificationDetails: notificationDetails,
   );
-}
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await initializeNotifications();
-  runApp(const EmergencyApp());
 }
 
 class EmergencyApp extends StatelessWidget {
@@ -89,17 +110,15 @@ class _SplashPageState extends State<SplashPage>
     super.initState();
 
     _controller =
-        AnimationController(
-          duration: const Duration(milliseconds: 1000),
-          vsync: this,
-        )..addStatusListener((status) {
-          if (status == AnimationStatus.completed && mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-            );
-          }
-        });
+        AnimationController(duration: const Duration(seconds: 3), vsync: this)
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed && mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+            }
+          });
 
     _ambulanceOffset =
         Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(
@@ -287,168 +306,152 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
   final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
-  void loginUser() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomePage()),
-    );
+  bool isLogin = true;
+
+  Future<void> loginUser() async {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
+    }
   }
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
+  Future<void> createAccount() async {
+    try {
+      final credential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+      await credential.user?.updateDisplayName(nameController.text.trim());
+
+      await FirebaseFirestore.instance
+          .collection("users")
+          .doc(credential.user!.uid)
+          .set({
+            "name": nameController.text.trim(),
+            "email": emailController.text.trim(),
+            'phone': phoneController.text.trim(),
+            "createdAt": FieldValue.serverTimestamp(),
+          });
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Account creation failed: $e")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 40,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.red.shade100,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.emergency, size: 70, color: Colors.red),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Emergency Response",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Stay Safe. Stay Connected.",
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 40),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person, color: Colors.red),
-                    labelText: "Full Name",
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(18),
+      body: GradientBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const SizedBox(height: 40),
+                const Icon(Icons.emergency, size: 90, color: Colors.white),
+                const SizedBox(height: 20),
+                Text(
+                  isLogin ? "Login" : "Create Account",
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 15),
+                const SizedBox(height: 30),
 
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: TextField(
+                if (!isLogin)
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      labelText: "Full Name",
+                      prefixIcon: Icon(Icons.person),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                if (!isLogin) const SizedBox(height: 15),
+
+                TextField(
                   controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.email, color: Colors.red),
+                    filled: true,
+                    fillColor: Colors.white,
                     labelText: "Email",
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(18),
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: TextField(
+
+                const SizedBox(height: 15),
+
+                TextField(
                   controller: passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.lock, color: Colors.red),
+                    filled: true,
+                    fillColor: Colors.white,
                     labelText: "Password",
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(18),
+                    prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(),
                   ),
                 ),
-              ),
-              const SizedBox(height: 30),
-              Container(
-                width: double.infinity,
-                height: 55,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Colors.red, Colors.orange],
-                  ),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: ElevatedButton(
-                  onPressed: loginUser,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: const Text(
-                    "LOGIN",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+
+                const SizedBox(height: 25),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: isLogin ? loginUser : createAccount,
+                    child: Text(isLogin ? "LOGIN" : "CREATE ACCOUNT"),
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () {},
-                child: const Text(
-                  "Create Account",
-                  style: TextStyle(color: Colors.red),
+
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      isLogin = !isLogin;
+                    });
+                  },
+                  child: Text(
+                    isLogin
+                        ? "Don't have an account? Create Account"
+                        : "Already have an account? Login",
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -471,6 +474,7 @@ class _HomePageState extends State<HomePage> {
     ContactsPage(),
     ReportPage(),
     NearbyHelpPage(),
+    ProfilePage(),
   ];
 
   @override
@@ -490,6 +494,7 @@ class _HomePageState extends State<HomePage> {
             icon: Icon(Icons.local_hospital),
             label: "Help",
           ),
+          NavigationDestination(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
     );
@@ -579,6 +584,7 @@ class DashboardPage extends StatelessWidget {
                           await Geolocator.isLocationServiceEnabled();
 
                       if (!serviceEnabled) {
+                        // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text("Please turn on location services."),
@@ -596,6 +602,7 @@ class DashboardPage extends StatelessWidget {
 
                       if (permission == LocationPermission.denied ||
                           permission == LocationPermission.deniedForever) {
+                        // ignore: use_build_context_synchronously
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text("Location permission is required."),
@@ -697,16 +704,51 @@ class ContactsPage extends StatelessWidget {
   }
 }
 
-class ReportPage extends StatelessWidget {
+class ReportPage extends StatefulWidget {
   const ReportPage({super.key});
 
   @override
+  State<ReportPage> createState() => _ReportPageState();
+}
+
+class _ReportPageState extends State<ReportPage> {
+  String? incidentType;
+  final descriptionController = TextEditingController();
+
+  Future<void> saveReport() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    await FirebaseFirestore.instance.collection("incident_reports").add({
+      "userId": user.uid,
+      "email": user.email,
+      "incidentType": incidentType,
+      "description": descriptionController.text.trim(),
+      "createdAt": FieldValue.serverTimestamp(),
+    });
+    if (!mounted) return;
+
+    descriptionController.clear();
+    setState(() {
+      incidentType = null;
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Incident report saved")));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return AppPage(
       title: "Report Incident",
       child: Column(
         children: [
           DropdownButtonFormField<String>(
+            initialValue: incidentType,
             decoration: const InputDecoration(
               labelText: "Incident Type",
               border: OutlineInputBorder(),
@@ -717,24 +759,27 @@ class ReportPage extends StatelessWidget {
               DropdownMenuItem(value: "Accident", child: Text("Accident")),
               DropdownMenuItem(value: "Crime", child: Text("Crime")),
             ],
-            onChanged: (value) {},
+            onChanged: (value) {
+              setState(() {
+                incidentType = value;
+              });
+            },
           ),
+
           const SizedBox(height: 16),
-          const TextField(
+
+          TextField(
+            controller: descriptionController,
             maxLines: 5,
-            decoration: InputDecoration(
+            decoration: const InputDecoration(
               labelText: "Description",
               hintText: "Explain what happened...",
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.image),
-            label: const Text("Upload Image"),
-          ),
+
           const SizedBox(height: 20),
+
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -743,14 +788,55 @@ class ReportPage extends StatelessWidget {
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Incident submitted")),
-                );
-              },
+              onPressed: saveReport,
               icon: const Icon(Icons.send),
               label: const Text("Submit Report"),
             ),
+          ),
+
+          const SizedBox(height: 30),
+
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              "My Reports",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection("incident_reports")
+                .where("userId", isEqualTo: user?.uid)
+                .orderBy("createdAt", descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const CircularProgressIndicator();
+              }
+
+              final reports = snapshot.data!.docs;
+
+              if (reports.isEmpty) {
+                return const Text("No reports submitted yet.");
+              }
+
+              return Column(
+                children: reports.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+
+                  return Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.report, color: Colors.red),
+                      title: Text(data["incidentType"] ?? "Unknown"),
+                      subtitle: Text(data["description"] ?? ""),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
@@ -787,6 +873,225 @@ class NearbyHelpPage extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final user = FirebaseAuth.instance.currentUser;
+
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final phoneController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.text = user?.displayName ?? "";
+    emailController.text = user?.email ?? "";
+    loadProfile();
+  }
+
+  Future<void> loadProfile() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        return;
+      }
+
+      final doc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data();
+
+        phoneController.text = data?["phone"] ?? "";
+        nameController.text = data?["name"] ?? "";
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint("Profile loading error: $e");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Unable to load profile. Check internet/Firebase connection.",
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> updateProfile() async {
+    await user?.updateDisplayName(nameController.text.trim());
+
+    await FirebaseFirestore.instance.collection("users").doc(user!.uid).set({
+      "name": nameController.text.trim(),
+      "email": emailController.text.trim(),
+      "phone": phoneController.text.trim(),
+    }, SetOptions(merge: true));
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+  }
+
+  Future<void> changeEmail() async {
+    try {
+      await user?.verifyBeforeUpdateEmail(emailController.text.trim());
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Verification email sent. Confirm it to change email."),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Email change failed: $e")));
+    }
+  }
+
+  Future<void> changePassword() async {
+    try {
+      await user?.updatePassword(passwordController.text.trim());
+
+      passwordController.clear();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Password changed successfully")),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please log in again before changing password."),
+        ),
+      );
+    }
+  }
+
+  Future<void> logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppPage(
+      title: "My Profile",
+      child: Column(
+        children: [
+          const CircleAvatar(
+            radius: 45,
+            backgroundColor: Colors.redAccent,
+            child: Icon(Icons.person, size: 50, color: Colors.white),
+          ),
+
+          const SizedBox(height: 20),
+
+          TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: "Full Name",
+              prefixIcon: Icon(Icons.person),
+              border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          TextField(
+            controller: phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: "Phone Number",
+              prefixIcon: Icon(Icons.phone),
+              border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          ElevatedButton(
+            onPressed: updateProfile,
+            child: const Text("Update Profile"),
+          ),
+
+          const SizedBox(height: 25),
+
+          TextField(
+            controller: emailController,
+            decoration: const InputDecoration(
+              labelText: "Email Address",
+              prefixIcon: Icon(Icons.email),
+              border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          ElevatedButton(
+            onPressed: changeEmail,
+            child: const Text("Change Email"),
+          ),
+
+          const SizedBox(height: 25),
+
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: "New Password",
+              prefixIcon: Icon(Icons.lock),
+              border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 15),
+
+          ElevatedButton(
+            onPressed: changePassword,
+            child: const Text("Change Password"),
+          ),
+
+          const SizedBox(height: 25),
+
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: logout,
+            icon: const Icon(Icons.logout),
+            label: const Text("Logout"),
+          ),
+        ],
       ),
     );
   }
