@@ -9,30 +9,23 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
 
 Future<void> testNetwork() async {
   try {
     final response = await http.get(
       Uri.parse('https://jsonplaceholder.typicode.com/posts/1'),
     );
-
-    debugPrint("Network status: ${response.statusCode}");
-    debugPrint("Network response: ${response.body}");
+    debugPrint('Network status: ${response.statusCode}');
   } catch (e) {
-    debugPrint("Network error: $e");
+    debugPrint('Network error: $e');
   }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   await testNetwork();
-
   await initializeNotifications();
-
   runApp(const EmergencyApp());
 }
 
@@ -185,6 +178,20 @@ class _SplashPageState extends State<SplashPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Container(
+                    width: 92,
+                    height: 92,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    child: const Icon(
+                      Icons.emergency,
+                      color: Colors.redAccent,
+                      size: 54,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
                   const Text(
                     'Emergency Response',
                     textAlign: TextAlign.center,
@@ -195,9 +202,9 @@ class _SplashPageState extends State<SplashPage>
                       letterSpacing: 1.1,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                   const Text(
-                    'Preparing help for ambulance, police and fire rescue',
+                    'Every second counts to save a life',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 16, color: Colors.white70),
                   ),
@@ -249,11 +256,6 @@ class _SplashPageState extends State<SplashPage>
                       color: Colors.white,
                       backgroundColor: Colors.white24,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Loading emergency services...',
-                    style: TextStyle(color: Colors.white70),
                   ),
                 ],
               ),
@@ -309,8 +311,18 @@ class _LoginPageState extends State<LoginPage> {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final phoneController = TextEditingController();
 
   bool isLogin = true;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneController.dispose();
+    super.dispose();
+  }
 
   Future<void> loginUser() async {
     try {
@@ -325,10 +337,10 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } catch (e) {
-      // ignore: use_build_context_synchronously
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Login failed: $e")));
+      ).showSnackBar(SnackBar(content: Text('Login failed: $e')));
     }
   }
 
@@ -343,14 +355,15 @@ class _LoginPageState extends State<LoginPage> {
       await credential.user?.updateDisplayName(nameController.text.trim());
 
       await FirebaseFirestore.instance
-          .collection("users")
+          .collection('users')
           .doc(credential.user!.uid)
           .set({
-            "name": nameController.text.trim(),
-            "email": emailController.text.trim(),
+            'name': nameController.text.trim(),
+            'email': emailController.text.trim(),
             'phone': phoneController.text.trim(),
-            "createdAt": FieldValue.serverTimestamp(),
+            'createdAt': FieldValue.serverTimestamp(),
           });
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -360,7 +373,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Account creation failed: $e")));
+      ).showSnackBar(SnackBar(content: Text('Account creation failed: $e')));
     }
   }
 
@@ -373,80 +386,114 @@ class _LoginPageState extends State<LoginPage> {
             padding: const EdgeInsets.all(24),
             child: Column(
               children: [
-                const SizedBox(height: 40),
-                const Icon(Icons.emergency, size: 90, color: Colors.white),
-                const SizedBox(height: 20),
-                Text(
-                  isLogin ? "Login" : "Create Account",
-                  style: const TextStyle(
-                    fontSize: 32,
+                const SizedBox(height: 35),
+                Container(
+                  width: 95,
+                  height: 95,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.emergency,
+                    size: 58,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'Emergency Response',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 30,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-
-                const SizedBox(height: 30),
-
-                if (!isLogin)
+                const Text(
+                  'Every second counts to save a life',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 28),
+                Text(
+                  isLogin ? 'Login' : 'Create Account',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 25),
+                if (!isLogin) ...[
                   TextField(
                     controller: nameController,
                     decoration: const InputDecoration(
                       filled: true,
                       fillColor: Colors.white,
-                      labelText: "Full Name",
+                      labelText: 'Full Name',
                       prefixIcon: Icon(Icons.person),
                       border: OutlineInputBorder(),
                     ),
                   ),
-
-                if (!isLogin) const SizedBox(height: 15),
-
+                  const SizedBox(height: 15),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: Colors.white,
+                      labelText: 'Phone Number',
+                      prefixIcon: Icon(Icons.phone),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                ],
                 TextField(
                   controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    labelText: "Email",
+                    labelText: 'Email',
                     prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 15),
-
                 TextField(
                   controller: passwordController,
                   obscureText: true,
                   decoration: const InputDecoration(
                     filled: true,
                     fillColor: Colors.white,
-                    labelText: "Password",
+                    labelText: 'Password',
                     prefixIcon: Icon(Icons.lock),
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 25),
-
                 SizedBox(
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: isLogin ? loginUser : createAccount,
-                    child: Text(isLogin ? "LOGIN" : "CREATE ACCOUNT"),
+                    onPressed: () async {
+                      if (isLogin) {
+                        await loginUser();
+                      } else {
+                        await createAccount();
+                      }
+                    },
+                    child: Text(isLogin ? 'LOGIN' : 'CREATE ACCOUNT'),
                   ),
                 ),
-
                 TextButton(
-                  onPressed: () {
-                    setState(() {
-                      isLogin = !isLogin;
-                    });
-                  },
+                  onPressed: () => setState(() => isLogin = !isLogin),
                   child: Text(
                     isLogin
                         ? "Don't have an account? Create Account"
-                        : "Already have an account? Login",
+                        : 'Already have an account? Login',
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
@@ -483,18 +530,16 @@ class _HomePageState extends State<HomePage> {
       body: pages[selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => selectedIndex = index);
-        },
+        onDestinationSelected: (index) => setState(() => selectedIndex = index),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard), label: "Home"),
-          NavigationDestination(icon: Icon(Icons.contacts), label: "Contacts"),
-          NavigationDestination(icon: Icon(Icons.report), label: "Report"),
+          NavigationDestination(icon: Icon(Icons.dashboard), label: 'Home'),
+          NavigationDestination(icon: Icon(Icons.contacts), label: 'Contacts'),
+          NavigationDestination(icon: Icon(Icons.report), label: 'Report'),
           NavigationDestination(
             icon: Icon(Icons.local_hospital),
-            label: "Help",
+            label: 'Help',
           ),
-          NavigationDestination(icon: Icon(Icons.person), label: "Profile"),
+          NavigationDestination(icon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
     );
@@ -504,19 +549,108 @@ class _HomePageState extends State<HomePage> {
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
-  void showSosAlert(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("SOS alert sent with your live location!"),
-        backgroundColor: Colors.redAccent,
-      ),
+  Future<Position?> _getCurrentPosition(BuildContext context) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please turn on location services.')),
+        );
+      }
+      return null;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission is required.')),
+        );
+      }
+      return null;
+    }
+
+    return Geolocator.getCurrentPosition();
+  }
+
+  Future<void> sendSms(String phone, String message) async {
+    final Uri smsUri = Uri(
+      scheme: 'sms',
+      path: phone,
+      queryParameters: {'body': message},
     );
+
+    if (await canLaunchUrl(smsUri)) {
+      await launchUrl(smsUri);
+    }
+  }
+
+  Future<void> sendSosAlert(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return;
+    }
+
+    final position = await _getCurrentPosition(context);
+    if (position == null) {
+      return;
+    }
+
+    final locationLink =
+        'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
+
+    final contactsSnapshot = await FirebaseFirestore.instance
+        .collection('emergency_contacts')
+        .where('userId', isEqualTo: user.uid)
+        .get();
+
+    final phones = contactsSnapshot.docs
+        .map((doc) => (doc.data()['phone'] ?? '').toString().trim())
+        .where((phone) => phone.isNotEmpty)
+        .toList();
+
+    final message =
+        'Emergency! I need help. My live location is: $locationLink';
+
+    if (phones.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No emergency contacts saved. Add contacts first.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    for (final phone in phones) {
+      await sendSms(phone, message);
+    }
+
+    await SharePlus.instance.share(
+      ShareParams(text: '$message\n\nEmergency contacts: ${phones.join(', ')}'),
+    );
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('SOS location opened for ${phones.length} contact(s).'),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final userName = user?.email?.split('@')[0] ?? "User";
+    final userName = user?.displayName?.isNotEmpty == true
+        ? user!.displayName!
+        : user?.email?.split('@')[0] ?? 'User';
 
     return GradientBackground(
       child: SafeArea(
@@ -527,7 +661,7 @@ class DashboardPage extends StatelessWidget {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "Hello, $userName!",
+                  'Hello, $userName!',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -538,13 +672,13 @@ class DashboardPage extends StatelessWidget {
               const Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  "Are you safe today?",
+                  'Are you safe today?',
                   style: TextStyle(color: Colors.white70),
                 ),
               ),
               const SizedBox(height: 30),
               GestureDetector(
-                onTap: () => showSosAlert(context),
+                onTap: () => sendSosAlert(context),
                 child: Container(
                   width: 220,
                   height: 220,
@@ -561,7 +695,7 @@ class DashboardPage extends StatelessWidget {
                   ),
                   child: const Center(
                     child: Text(
-                      "SOS",
+                      'SOS',
                       style: TextStyle(
                         fontSize: 52,
                         color: Colors.white,
@@ -576,61 +710,26 @@ class DashboardPage extends StatelessWidget {
                 children: [
                   FeatureCard(
                     icon: Icons.location_on,
-                    title: "Live Location",
-                    subtitle: "Share GPS location",
+                    title: 'Live Location',
+                    subtitle: 'Share GPS location',
                     color: Colors.blue,
                     onTap: () async {
-                      bool serviceEnabled =
-                          await Geolocator.isLocationServiceEnabled();
-
-                      if (!serviceEnabled) {
-                        // ignore: use_build_context_synchronously
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Please turn on location services."),
-                          ),
-                        );
-                        return;
-                      }
-
-                      LocationPermission permission =
-                          await Geolocator.checkPermission();
-
-                      if (permission == LocationPermission.denied) {
-                        permission = await Geolocator.requestPermission();
-                      }
-
-                      if (permission == LocationPermission.denied ||
-                          permission == LocationPermission.deniedForever) {
-                        // ignore: use_build_context_synchronously
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Location permission is required."),
-                          ),
-                        );
-                        return;
-                      }
-
-                      Position position = await Geolocator.getCurrentPosition();
-
+                      final position = await _getCurrentPosition(context);
+                      if (position == null) return;
                       final locationLink =
-                          "https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}";
-
+                          'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
                       await SharePlus.instance.share(
-                        ShareParams(
-                          text: "Emergency! My live location: $locationLink",
-                        ),
+                        ShareParams(text: 'My live location: $locationLink'),
                       );
                     },
                   ),
                   FeatureCard(
                     icon: Icons.phone,
-                    title: "Quick Call",
-                    subtitle: "Call emergency contacts",
+                    title: 'Quick Call',
+                    subtitle: 'Call emergency services',
                     color: Colors.green,
                     onTap: () async {
-                      final Uri phoneUri = Uri.parse("tel:+254700123456");
-
+                      final Uri phoneUri = Uri.parse('tel:999');
                       if (await canLaunchUrl(phoneUri)) {
                         await launchUrl(phoneUri);
                       }
@@ -638,24 +737,24 @@ class DashboardPage extends StatelessWidget {
                   ),
                   FeatureCard(
                     icon: Icons.warning,
-                    title: "Risk Alert",
-                    subtitle: "High-risk area warning",
+                    title: 'Risk Alert',
+                    subtitle: 'View safety warnings',
                     color: Colors.orange,
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Opening Risk Alerts...")),
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RiskAlertPage(),
+                        ),
                       );
                     },
                   ),
-
                   FeatureCard(
                     icon: Icons.notifications_active,
-                    title: "Notifications",
-                    subtitle: "Instant safety alerts",
+                    title: 'Notifications',
+                    subtitle: 'Instant safety alerts',
                     color: Colors.purple,
-                    onTap: () async {
-                      await showSafetyNotification();
-                    },
+                    onTap: () async => showSafetyNotification(),
                   ),
                 ],
               ),
@@ -667,38 +766,208 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-class ContactsPage extends StatelessWidget {
+class ContactsPage extends StatefulWidget {
   const ContactsPage({super.key});
 
-  static const contacts = [
-    ["Police", "999", Icons.local_police],
-    ["Ambulance", "911", Icons.local_hospital],
-    ["Fire Service", "112", Icons.fire_truck],
-    ["Family Contact", "+254 700 000 000", Icons.family_restroom],
-  ];
+  @override
+  State<ContactsPage> createState() => _ContactsPageState();
+}
+
+class _ContactsPageState extends State<ContactsPage> {
+  final contactNameController = TextEditingController();
+  final contactPhoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    contactNameController.dispose();
+    contactPhoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> addEmergencyContact() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final name = contactNameController.text.trim();
+    final phone = contactPhoneController.text.trim();
+
+    if (name.isEmpty || phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter both name and phone number.')),
+      );
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('emergency_contacts').add({
+      'userId': user.uid,
+      'name': name,
+      'phone': phone,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    contactNameController.clear();
+    contactPhoneController.clear();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Emergency contact added.')));
+  }
+
+  Future<void> deleteContact(String docId) async {
+    await FirebaseFirestore.instance
+        .collection('emergency_contacts')
+        .doc(docId)
+        .delete();
+  }
+
+  Future<void> callContact(String phone) async {
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    return AppPage(
+      title: 'Emergency Contacts',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Add people who should receive your location when SOS is pressed.',
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: contactNameController,
+            decoration: const InputDecoration(
+              labelText: 'Contact Name',
+              prefixIcon: Icon(Icons.person),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: contactPhoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Phone Number',
+              prefixIcon: Icon(Icons.phone),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: addEmergencyContact,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Contact'),
+            ),
+          ),
+          const SizedBox(height: 25),
+          const Text(
+            'Saved Contacts',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('emergency_contacts')
+                .where('userId', isEqualTo: user?.uid)
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Text('No emergency contacts added yet.');
+              }
+
+              final contacts = snapshot.data!.docs;
+
+              return Column(
+                children: contacts.map((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name = data['name'] ?? 'Unnamed';
+                  final phone = data['phone'] ?? '';
+
+                  return Card(
+                    child: ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Colors.redAccent,
+                        child: Icon(Icons.person, color: Colors.white),
+                      ),
+                      title: Text(name),
+                      subtitle: Text(phone),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.call, color: Colors.green),
+                            onPressed: () => callContact(phone),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => deleteContact(doc.id),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RiskAlertPage extends StatelessWidget {
+  const RiskAlertPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return AppPage(
-      title: "Emergency Contacts",
+      title: 'Risk Alerts',
       child: Column(
-        children: contacts.map((contact) {
-          return Card(
-            margin: const EdgeInsets.only(bottom: 14),
+        children: const [
+          Card(
             child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.redAccent,
-                child: Icon(contact[2] as IconData, color: Colors.white),
-              ),
-              title: Text(contact[0] as String),
-              subtitle: Text(contact[1] as String),
-              trailing: IconButton(
-                icon: const Icon(Icons.call, color: Colors.green),
-                onPressed: () {},
-              ),
+              leading: Icon(Icons.warning, color: Colors.orange),
+              title: Text('High Risk Area'),
+              subtitle: Text('Avoid isolated areas and stay alert.'),
             ),
-          );
-        }).toList(),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.local_fire_department, color: Colors.red),
+              title: Text('Fire Risk'),
+              subtitle: Text('Report smoke, fire, or gas leaks immediately.'),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.health_and_safety, color: Colors.blue),
+              title: Text('Medical Emergency'),
+              subtitle: Text('Call emergency services if someone is injured.'),
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.flood, color: Colors.teal),
+              title: Text('Flood Warning'),
+              subtitle: Text('Avoid flooded roads and move to safer areas.'),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -715,28 +984,39 @@ class _ReportPageState extends State<ReportPage> {
   String? incidentType;
   final descriptionController = TextEditingController();
 
+  @override
+  void dispose() {
+    descriptionController.dispose();
+    super.dispose();
+  }
+
   Future<void> saveReport() async {
     final user = FirebaseAuth.instance.currentUser;
-
     if (user == null) return;
 
-    await FirebaseFirestore.instance.collection("incident_reports").add({
-      "userId": user.uid,
-      "email": user.email,
-      "incidentType": incidentType,
-      "description": descriptionController.text.trim(),
-      "createdAt": FieldValue.serverTimestamp(),
+    if (incidentType == null || descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select incident type and add description.'),
+        ),
+      );
+      return;
+    }
+
+    await FirebaseFirestore.instance.collection('incident_reports').add({
+      'userId': user.uid,
+      'email': user.email,
+      'incidentType': incidentType,
+      'description': descriptionController.text.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
     });
+
     if (!mounted) return;
-
     descriptionController.clear();
-    setState(() {
-      incidentType = null;
-    });
-
+    setState(() => incidentType = null);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("Incident report saved")));
+    ).showSnackBar(const SnackBar(content: Text('Incident report saved')));
   }
 
   @override
@@ -744,42 +1024,34 @@ class _ReportPageState extends State<ReportPage> {
     final user = FirebaseAuth.instance.currentUser;
 
     return AppPage(
-      title: "Report Incident",
+      title: 'Report Incident',
       child: Column(
         children: [
           DropdownButtonFormField<String>(
             initialValue: incidentType,
             decoration: const InputDecoration(
-              labelText: "Incident Type",
+              labelText: 'Incident Type',
               border: OutlineInputBorder(),
             ),
             items: const [
-              DropdownMenuItem(value: "Medical", child: Text("Medical")),
-              DropdownMenuItem(value: "Fire", child: Text("Fire")),
-              DropdownMenuItem(value: "Accident", child: Text("Accident")),
-              DropdownMenuItem(value: "Crime", child: Text("Crime")),
+              DropdownMenuItem(value: 'Medical', child: Text('Medical')),
+              DropdownMenuItem(value: 'Fire', child: Text('Fire')),
+              DropdownMenuItem(value: 'Accident', child: Text('Accident')),
+              DropdownMenuItem(value: 'Crime', child: Text('Crime')),
             ],
-            onChanged: (value) {
-              setState(() {
-                incidentType = value;
-              });
-            },
+            onChanged: (value) => setState(() => incidentType = value),
           ),
-
           const SizedBox(height: 16),
-
           TextField(
             controller: descriptionController,
             maxLines: 5,
             decoration: const InputDecoration(
-              labelText: "Description",
-              hintText: "Explain what happened...",
+              labelText: 'Description',
+              hintText: 'Explain what happened...',
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 20),
-
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -790,27 +1062,23 @@ class _ReportPageState extends State<ReportPage> {
               ),
               onPressed: saveReport,
               icon: const Icon(Icons.send),
-              label: const Text("Submit Report"),
+              label: const Text('Submit Report'),
             ),
           ),
-
           const SizedBox(height: 30),
-
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              "My Reports",
+              'My Reports',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
-
           const SizedBox(height: 10),
-
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection("incident_reports")
-                .where("userId", isEqualTo: user?.uid)
-                .orderBy("createdAt", descending: true)
+                .collection('incident_reports')
+                .where('userId', isEqualTo: user?.uid)
+                .orderBy('createdAt', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -818,20 +1086,18 @@ class _ReportPageState extends State<ReportPage> {
               }
 
               final reports = snapshot.data!.docs;
-
               if (reports.isEmpty) {
-                return const Text("No reports submitted yet.");
+                return const Text('No reports submitted yet.');
               }
 
               return Column(
                 children: reports.map((doc) {
                   final data = doc.data() as Map<String, dynamic>;
-
                   return Card(
                     child: ListTile(
                       leading: const Icon(Icons.report, color: Colors.red),
-                      title: Text(data["incidentType"] ?? "Unknown"),
-                      subtitle: Text(data["description"] ?? ""),
+                      title: Text(data['incidentType'] ?? 'Unknown'),
+                      subtitle: Text(data['description'] ?? ''),
                     ),
                   );
                 }).toList(),
@@ -848,16 +1114,16 @@ class NearbyHelpPage extends StatelessWidget {
   const NearbyHelpPage({super.key});
 
   static const places = [
-    ["Nearest Hospital", "2.1 km away", Icons.local_hospital, Colors.red],
-    ["Police Station", "3.4 km away", Icons.local_police, Colors.blue],
-    ["Pharmacy", "1.2 km away", Icons.medication, Colors.green],
-    ["Fire Station", "4.0 km away", Icons.fire_truck, Colors.orange],
+    ['Nearest Hospital', '2.1 km away', Icons.local_hospital, Colors.red],
+    ['Police Station', '3.4 km away', Icons.local_police, Colors.blue],
+    ['Pharmacy', '1.2 km away', Icons.medication, Colors.green],
+    ['Fire Station', '4.0 km away', Icons.fire_truck, Colors.orange],
   ];
 
   @override
   Widget build(BuildContext context) {
     return AppPage(
-      title: "Nearby Help",
+      title: 'Nearby Help',
       child: Column(
         children: places.map((place) {
           return Card(
@@ -886,7 +1152,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  final user = FirebaseAuth.instance.currentUser;
+  User? user = FirebaseAuth.instance.currentUser;
 
   final nameController = TextEditingController();
   final emailController = TextEditingController();
@@ -896,96 +1162,92 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    nameController.text = user?.displayName ?? "";
-    emailController.text = user?.email ?? "";
+    nameController.text = user?.displayName ?? '';
+    emailController.text = user?.email ?? '';
     loadProfile();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    passwordController.dispose();
+    super.dispose();
   }
 
   Future<void> loadProfile() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        return;
-      }
+      user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
       final doc = await FirebaseFirestore.instance
-          .collection("users")
-          .doc(user.uid)
+          .collection('users')
+          .doc(user!.uid)
           .get();
 
       if (doc.exists) {
         final data = doc.data();
-
-        phoneController.text = data?["phone"] ?? "";
-        nameController.text = data?["name"] ?? "";
+        phoneController.text = data?['phone'] ?? '';
+        nameController.text = data?['name'] ?? '';
       }
 
-      if (mounted) {
-        setState(() {});
-      }
+      if (mounted) setState(() {});
     } catch (e) {
-      debugPrint("Profile loading error: $e");
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              "Unable to load profile. Check internet/Firebase connection.",
-            ),
-          ),
-        );
-      }
+      debugPrint('Profile loading error: $e');
     }
   }
 
   Future<void> updateProfile() async {
+    user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
     await user?.updateDisplayName(nameController.text.trim());
 
-    await FirebaseFirestore.instance.collection("users").doc(user!.uid).set({
-      "name": nameController.text.trim(),
-      "email": emailController.text.trim(),
-      "phone": phoneController.text.trim(),
+    await FirebaseFirestore.instance.collection('users').doc(user!.uid).set({
+      'name': nameController.text.trim(),
+      'email': emailController.text.trim(),
+      'phone': phoneController.text.trim(),
     }, SetOptions(merge: true));
-    if (!mounted) return;
 
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("Profile updated")));
+    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
   }
 
   Future<void> changeEmail() async {
     try {
+      user = FirebaseAuth.instance.currentUser;
       await user?.verifyBeforeUpdateEmail(emailController.text.trim());
-
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Verification email sent. Confirm it to change email."),
+          content: Text('Verification email sent. Confirm it to change email.'),
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Email change failed: $e")));
+      ).showSnackBar(SnackBar(content: Text('Email change failed: $e')));
     }
   }
 
   Future<void> changePassword() async {
     try {
+      user = FirebaseAuth.instance.currentUser;
       await user?.updatePassword(passwordController.text.trim());
-
       passwordController.clear();
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Password changed successfully")),
+        const SnackBar(content: Text('Password changed successfully')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Please log in again before changing password."),
+          content: Text('Please log in again before changing password.'),
         ),
       );
     }
@@ -994,7 +1256,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -1004,7 +1265,7 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return AppPage(
-      title: "My Profile",
+      title: 'My Profile',
       child: Column(
         children: [
           const CircleAvatar(
@@ -1012,76 +1273,60 @@ class _ProfilePageState extends State<ProfilePage> {
             backgroundColor: Colors.redAccent,
             child: Icon(Icons.person, size: 50, color: Colors.white),
           ),
-
           const SizedBox(height: 20),
-
           TextField(
             controller: nameController,
             decoration: const InputDecoration(
-              labelText: "Full Name",
+              labelText: 'Full Name',
               prefixIcon: Icon(Icons.person),
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 15),
-
           TextField(
             controller: phoneController,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
-              labelText: "Phone Number",
+              labelText: 'Phone Number',
               prefixIcon: Icon(Icons.phone),
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 15),
-
           ElevatedButton(
             onPressed: updateProfile,
-            child: const Text("Update Profile"),
+            child: const Text('Update Profile'),
           ),
-
           const SizedBox(height: 25),
-
           TextField(
             controller: emailController,
             decoration: const InputDecoration(
-              labelText: "Email Address",
+              labelText: 'Email Address',
               prefixIcon: Icon(Icons.email),
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 15),
-
           ElevatedButton(
             onPressed: changeEmail,
-            child: const Text("Change Email"),
+            child: const Text('Change Email'),
           ),
-
           const SizedBox(height: 25),
-
           TextField(
             controller: passwordController,
             obscureText: true,
             decoration: const InputDecoration(
-              labelText: "New Password",
+              labelText: 'New Password',
               prefixIcon: Icon(Icons.lock),
               border: OutlineInputBorder(),
             ),
           ),
-
           const SizedBox(height: 15),
-
           ElevatedButton(
             onPressed: changePassword,
-            child: const Text("Change Password"),
+            child: const Text('Change Password'),
           ),
-
           const SizedBox(height: 25),
-
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.black,
@@ -1089,7 +1334,7 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             onPressed: logout,
             icon: const Icon(Icons.logout),
-            label: const Text("Logout"),
+            label: const Text('Logout'),
           ),
         ],
       ),
@@ -1214,7 +1459,6 @@ class ResponsiveGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
     int crossAxisCount = 2;
     if (width > 900) {
       crossAxisCount = 4;
